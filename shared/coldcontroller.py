@@ -38,11 +38,13 @@ def _write_u32_le(buf, offset, value):
 
 def start():
     """Enter the ColdController proof mode and bring up USB HID."""
+    import glob
     from usb import enable_usb
-    from glob import dis
 
     enable_usb()
+    glob.numpad.start()
 
+    dis = glob.dis
     dis.clear()
     dis.text(None, 2, 'BITCOIN AUDIO')
     dis.text(None, 18, 'COLDCONTROLLER')
