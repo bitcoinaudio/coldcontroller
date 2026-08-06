@@ -1,307 +1,121 @@
-# Security Advisory
+# ColdController
 
-- Versions from 2021 to July 2026 had a bug which produced poor entropy.
-- Any secrets generated on a COLDCARD in that period should be regenerated and 
-  funds moved on chain **immediately**.
-- Master seeds can only be trusted from releases after these levels:
-    - 5.6.0 (Mk4, MK5) 
-    - 1.5.0Q (Q1) 
-    - 4.2.0 (Mk3)
-    - 6.6.0 (Edge Mk/Q)
-- Using a BIP-39 passphrase mitigates some of the risk, although it relies
-  on the entropy your passphrase adds. Dice rolls introduced into the secret
-  provide 2.5 bits of entropy per roll.
-- [Blog post and updates](https://blog.coinkite.com/coldcard-mk3-seed-generation-warning/)
-- [Technical background on the bug](https://blog.coinkite.com/entropy-technical-backgrounder/)
+> [!CAUTION]
+> **This fork is not a production COLDCARD wallet project.**
+>
+> `bitcoinaudio/coldcontroller` exists to repurpose retired COLDCARD hardware as an experimental physical control surface for Bitcoin Audio. Any device used with ColdController firmware must be treated as **non-wallet development hardware**. Do not place Bitcoin, seed phrases, private keys, or other valuable wallet material on it.
 
----
+## Purpose of this fork
 
-# COLDCARD Hardware Wallet
+ColdController explores reuse of the COLDCARD's keypad, OLED, USB interface, microcontroller, microSD slot, and related hardware for music and Bitcoin Audio control.
 
-Coldcard is an Affordable, Ultra-secure & Verifiable Hardware Wallet for Bitcoin.
-Get yours at [Coldcard.com](http://coldcard.com)
+The first target is a retired **COLDCARD Mk3**. The first end-to-end milestone is intentionally small:
 
-[Follow @COLDCARDwallet on Twitter](https://twitter.com/coldcardwallet) to keep up
-with the latest updates and security alerts.
-
-![coldcard logo](https://coldcard.com/static/images/coldcard-logo-nav.png)
-
-![Mk5 coldcard picture front](https://coldcard.com/static/images/mk5-front.png)
-
-## Quick Links
-
-- [Latest firmware changes and updates](releases/ChangeLog.md)
-- [PGP signature file](releases/signatures.txt)
-- [Firmware binaries](https://coldcard.com/downloads)
-
-## Reproducible Builds
-
-To have confidence this source code tree is the same as the binary on your device,
-you can rebuild it from source and get **exactly the same bytes**. This process
-has been automated using Docker. Steps are as follows:
-
-1. Install [Docker](https://www.docker.com) and start it.
-2. Install [make (GNUMake)](https://www.gnu.org/software/make/) if you don't already have it.
-3. Checkout a specific version of the code, and start the process.
-
-    ```shell
-    git clone https://github.com/Coldcard/firmware.git
-    cd firmware
-    # DOWNLOAD https://coldcard.com/downloads
-    # get a copy of binary into ./releases/2026-03-05T2052-v5.5.0-mk-coldcard.dfu
-    git checkout 2026-03-05T2052-v5.5.0
-    cd stm32
-    make -f MK4-Makefile repro
-    ```
-
-4. At the end of the process a clear confirmation message is shown, or the differences.
-5. Build products can be found `firmware/stm32/built`.
-6. If you do not trust the results of `make repro` refer to `docs/notes-on-repro.md`
-   which breaks down the process.
-7. Process for Q firmware is the same, but change `MK4-Makefile` in last step to `Q1-Makefile`
-
-## Long-Lived Branches
-
-We are now maintaining two branches: `master` and `edge`.
-
-"Edge" will contain features that may not be ready for prime time,
-such as Taproot or Miniscript. Our standards for releasing new Edge
-versions are lower, so we can iterate faster and get these advancements
-out to other developers.
-
-Q and Mk series share the same code base. Individual files that are added,
-or removed, can be see in differences between `shared/manifest_mk4.py`
-and `shared/manifest_q1.py`. Common files are in `shared/manifest.py`.
-Firmware built for Mk5, supports the Mk4 without any functional differences.
-
-
-## Check-out and Setup
-
-**NOTE** This is the `master` branch and covers the latest hardware (Mk and Q).
-See branch `v4-legacy` for firmware which supports only Mk3/Mk2 and earlier.
-
-Do a checkout, recursively, to get all the submodules:
-
-```shell
-git clone --recursive https://github.com/Coldcard/firmware.git
+```text
+Mk3 keypad
+    -> BA/1 USB HID
+    -> ColdController host bridge
+    -> virtual MIDI
+    -> Ableton / Bitcoin Audio
 ```
 
-Already checked-out and getting git errors? Do this:
+Possible later work includes OLED feedback, control banks, transport and loop controls, OSC/API adapters, NakamoTones and Band Builder integration, and evaluation of native USB MIDI.
 
-```shell
-git fetch
-git reset --hard origin/master
+## Status
+
+**Experimental / R&D. Not production. Not a wallet.**
+
+Mk3 ColdController development is based on the upstream **`v4-legacy`** firmware line. The fork's `master` branch is retained primarily as an upstream/default reference and is **not the implementation base for Mk3 ColdController firmware**.
+
+Current physical definition of done:
+
+```text
+press Mk3 key 1
+    -> BA/1 HID key-down/key-up reports
+    -> coldcontroller/bridge.py
+    -> virtual MIDI port "ColdController"
+    -> MIDI note 36 visible in Ableton
 ```
 
-Alternatively, to get the latest release, you checkout a tagged branch:
+Until that path is proven on physical hardware, firmware changes should be treated as proof-of-concept work.
 
-```shell
-git clone https://github.com/Coldcard/firmware.git
-cd firmware
-git checkout $(git describe --match "20*" --abbrev=0)
+## Agent and contributor contract
+
+If you are an automated coding agent or contributor working in this repository, these are project constraints:
+
+1. **Do not treat this fork as a production hardware wallet.** Its purpose is hardware repurposing for Bitcoin Audio.
+2. **Do not restore wallet behavior as a "fix" to ColdController mode.** Bypassing wallet terms, PIN, seed, and transaction UX in developer-signed ColdController builds is intentional.
+3. **Never use real secrets for testing.** Do not add, request, or load valuable seeds, PINs, private keys, PSBTs, or funds.
+4. **For Mk3 work, branch from `v4-legacy`.** Do not blindly reset or merge the ColdController implementation to upstream `master`.
+5. **Preserve the existing bootloader/security boundary.** ColdController uses the upstream developer-signing mechanism; no bootloader bypass, glitching, or secure-boot defeat is part of this project.
+6. **Reuse existing Mk3 hardware paths first.** The current proof intentionally reuses the 64-byte USB HID interface and existing debounced membrane-keypad path.
+7. **Keep musical timing host-side.** ColdController is a control surface, not the authoritative MIDI clock or distributed jam clock.
+8. **Native USB MIDI is not M1.** Prove HID -> host bridge -> MIDI first.
+9. **Keep Bitcoin Audio additions clearly scoped.** Prefer `coldcontroller/` and small, obvious firmware hooks over broad rewrites of inherited wallet code.
+10. **Do not make production-security claims about this fork.** Documentation, issues, PRs, and code comments should consistently describe it as experimental repurposing work.
+11. **Respect upstream licensing.** Inherited Coldcard source remains subject to `COPYING-CC`. Any commercial firmware product based substantially on it requires a separate licensing or clean-room decision.
+
+A useful rule for agents: **if a proposed change makes the device behave more like a production wallet instead of more like a Bitcoin Audio controller, it is probably outside this fork's intended scope.**
+
+## Branch model
+
+- `master` — upstream/default reference line; not the Mk3 ColdController implementation base.
+- `v4-legacy` — upstream legacy Mk2/Mk3 firmware base.
+- ColdController feature branches — Mk3 work should normally branch from `v4-legacy`.
+
+The active proof-of-concept branch is currently `agent/mk3-hid-poc`.
+
+## ColdController-specific code
+
+On ColdController development branches, project-specific files live primarily under:
+
+```text
+coldcontroller/
+    README.md
+    protocol.md
+    bridge.py
+    requirements.txt
+    profiles/
+
+shared/coldcontroller.py
+```
+
+`coldcontroller/` contains the BA/1 protocol, host bridge, profiles, and project documentation. Small hooks under `shared/` connect the inherited Mk3 keypad, USB, display, and boot flow to controller mode.
+
+## Safety boundary
+
+ColdController test units should be labeled and treated as **retired wallets**.
+
+Never:
+
+- load a valuable seed phrase onto a ColdController test device;
+- use it to custody Bitcoin;
+- assume experimental firmware retains production wallet security properties;
+- present a ColdController build as an official Coinkite/COLDCARD product;
+- use production-wallet behavior as an acceptance criterion for this fork.
+
+Acceptance criteria for this project are controller behaviors: boot, display, keypad input, USB transport, MIDI/OSC/API translation, feedback, and Bitcoin Audio integration.
+
+## Upstream origin
+
+This repository is a fork of `Coldcard/firmware` so we can retain the Mk3 hardware support, bootloader compatibility, simulator/build tooling, and developer-signing path needed to experiment on real hardware.
+
+Coldcard and the inherited firmware are products/source of Coinkite Inc. ColdController is an independent Bitcoin Audio hardware-repurposing experiment and is not an official Coinkite product.
+
+For original production-wallet documentation, current security guidance, and current COLDCARD firmware, refer to the upstream `Coldcard/firmware` repository and Coinkite documentation. Upstream copyright and license notices remain authoritative for inherited files.
+
+## Mk3 development starting point
+
+```bash
+git clone --recursive https://github.com/bitcoinaudio/coldcontroller.git
+cd coldcontroller
+git checkout agent/mk3-hid-poc
 git submodule update --init --recursive
-```
 
-Do not use a path with any spaces in it. The Makefiles do not handle
-that well and we're not planning to fix it.
-
-Keep in mind that python requirements may change between versions,
-so at the top level, do this command:
-
-```shell
-pip install -r requirements.txt
-```
-
-### macOS
-
-[Python 3.5 or higher](https://www.python.org) and [Homebrew](https://brew.sh) is required.
-
-If working on an ARM-based MacOS system, you may want to create a
-new shell with `arch -x86_64 bash` before starting, or continuing
-to work on this source tree.
-
-#### Setup and run the desktop simulator
-
-You'll probably need to install at least these packages:
-
-```shell
-brew install sdl2 xterm swig
-brew install --cask xquartz gcc-arm-embedded
-```
-
-Used to be these were needed as well:
-
-```shell
-brew tap PX4/px4
-brew search px4/px4/gcc-arm-none-eabi
-```
-
-Then install the newest version, currently 83:
-
-```shell
-brew install px4/px4/gcc-arm-none-eabi-83
-```
-
-You may need to `brew upgrade gcc-arm-embedded` because we need 10.2 or higher.
-
-Then:
-
-```shell
-brew install automake autogen virtualenv
-virtualenv -p python3 ENV
-source ENV/bin/activate (or source ENV/bin/activate.csh based on shell preference)
-pip install -U pip
-pip install -r requirements.txt
-# apply micropython patch
-pushd external/micropython
-git apply ../../macos-mpy.patch
-popd
-make -C external/micropython/mpy-cross
-cd unix; make setup && make ngu-setup && make && ./simulator.py
-```
-
-You may need to reboot to avoid a `DISPLAY is not set` error.
-
-The next time you want to run the simulator, you can simply do
-
-```shell
-source ENV/bin/activate && cd unix && ./simulator.py
-```
-
-#### Building the firmware
-
-- `cd ../cli; pip install --editable .`
-- `cd ../stm32; make setup && make; make firmware-signed.dfu`
-- The resulting file, `firmware-signed.dfu` can be loaded directly onto a Coldcard, using this
-  command (already installed based on above)
-- `ckcc upgrade firmware-signed.dfu`
-
-Which looks like this:
-
-```shell
-[ENV] [firmware/stm32 42] ckcc upgrade firmware-signed.dfu  
-675328 bytes (start @ 293) to send from 'firmware-signed.dfu'
-Uploading  [##########--------------------------]   29%  0d 00:01:04
-```
-
-#### Big Sur Issues
-
-`defaults write org.python.python ApplePersistenceIgnoreState NO` will suppress a warning about `Python[22580:10101559] ApplePersistenceIgnoreState: Existing state will not be touched. New state will be written to...`
-
-See <https://bugs.python.org/issue32909>
-
-### Linux
-
-All steps you need to install and run the Coldcard simulator on Ubuntu 20.04:
-
-
-```shell
-# Install (system) requirements, tools and libraries
-apt install build-essential git python3 python3-pip libudev-dev gcc-arm-none-eabi libffi-dev xterm swig libpcsclite-dev python-is-python3 autoconf libtool python3-venv
-
-# Get sources, this takes a long time (because of external libraries), then open
-git clone --recursive https://github.com/Coldcard/firmware.git
-cd firmware
-
-# Apply address patch
-# if unix/linux_addr.patch exists use below command
-# not needed in current revision
-# git apply unix/linux_addr.patch
-
-#  * below is needed for ubuntu 24.04
-pushd external/micropython
-git apply ../../ubuntu24_mpy.patch
-popd
-#  * 
-
-
-# Create Python virtual environment and activate it
-python3 -m venv ENV  # or virtualenv -p python3 ENV
-source ENV/bin/activate
-
-# Install dependencies
-pip install -U pip setuptools
-pip install -r requirements.txt #general requirements
-pip install pysdl2-dll # Ubuntu needs this dependency
-
-# Build the Coldcard simulator
-cd unix
-pushd ../external/micropython/mpy-cross/
-make  # mpy-cross
-popd
+cd stm32
 make setup
-make ngu-setup
 make
-
-# Run the simulator in the active virtualenv
-./simulator.py
-
-# Later, if you want to run it (after a reboot). This assumes you extracted the git repo in ~ (home)
-cd ~/firmware
-source ENV/bin/activate
-cd unix
-./simulator.py
+make firmware-signed.dfu
 ```
 
-Also make sure that you have your python3 symlinked to python.
-
-## Code Organization
-
-Top-level dirs:
-
-`shared`
-
-- shared code between desktop test version and real-deal
-- expected to be largely in python, and higher-level
-- code exclusive to the Mk4 or Mk5 will be listed in `manifest_mk4.py`, and
-  to the Q will be listed in `manifest_q1.py`
-
-`unix`
-
-- unix (macOS) version for testing/rapid dev
-- this is a simulator for the product
-
-`testing`
-
-- test cases and associated data
-
-`stm32`
-
-- embedded binaries (and building), for actual product hardware
-- final target is a binary file for loading onto hardware
-
-`external`
-
-- code from other projects, ie. the dreaded submodules
-
-`graphics`
-
-- images which ship as part of the final product (icons)
-
-`stm32/bootloader`
-
-- 32k of factory-set code that you cannot change (Mk3)
-- however, you can inspect what code is on your coldcard and compare to this.
-
-`stm32/mk4-bootloader`
-`stm32/q1-bootloader`
-
-- 128k of factory-set code that you cannot change
-- however, you can inspect what code is on your coldcard and compare to this.
-
-`hardware`
-
-- schematic and bill of materials for the Coldcard, all versions.
-
-`unix/work/...`
-
-- `/MicroSD/*` files on "simulated" microSD card
-
-- `/VirtDisk/*` simulated emulated virtual Disk files.
-
-- `/settings/*.aes` persistent settings for Simulator
-
-## Support
-
-Found a bug? Email: support@coinkite.com
-
+The resulting developer-signed image is **experimental firmware**. Read the branch-specific `coldcontroller/README.md` before flashing hardware.
