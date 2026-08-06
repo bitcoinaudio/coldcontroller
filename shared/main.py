@@ -59,6 +59,17 @@ from nvstore import settings
 
 async def more_setup():
     # Boot up code; splash screen is being shown
+
+    # ColdController is intentionally reachable only from developer-signed
+    # firmware. In that mode, do not enter wallet terms/PIN/UX at all.
+    if version.is_devmode:
+        try:
+            import coldcontroller
+            if coldcontroller.ENABLED:
+                coldcontroller.start()
+                return
+        except ImportError:
+            pass
                 
     # MAYBE: check if we're a brick and die again? Or show msg?
     

@@ -45,6 +45,8 @@ class NumpadBase:
 
     def _key_event(self, key):
         if key != self.key_pressed:
+            previous_key = self.key_pressed
+
             # annouce change
             self.key_pressed = key
 
@@ -57,6 +59,15 @@ class NumpadBase:
                     self._changes.put_nowait('')
 
             self._changes.put_nowait(key)
+
+            # ColdController is a developer-firmware proof mode. Mirror the
+            # transition without consuming or changing the normal keypad queue.
+            try:
+                import coldcontroller
+                if coldcontroller.ENABLED:
+                    coldcontroller.key_event(previous_key, key)
+            except Exception:
+                pass
 
             self.last_event_time = utime.ticks_ms()
     

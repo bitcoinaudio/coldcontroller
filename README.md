@@ -1,147 +1,121 @@
-# Coldcard Wallet
+# ColdController
 
-Coldcard is a Cheap, Ultra-secure & Verifiable Hardware Wallet for Bitcoin.
-Get yours at [Coldcard.com](http://coldcard.com)
+> [!CAUTION]
+> **This fork is not a production COLDCARD wallet project.**
+>
+> `bitcoinaudio/coldcontroller` exists to repurpose retired COLDCARD hardware as an experimental physical control surface for Bitcoin Audio. Any device used with ColdController firmware must be treated as **non-wallet development hardware**. Do not place Bitcoin, seed phrases, private keys, or other valuable wallet material on it.
 
-[Follow @COLDCARDwallet on Twitter](https://twitter.com/coldcardwallet) to keep up
-with the latest updates and security alerts. 
+## Purpose of this fork
 
-![coldcard logo](https://coldcard.com/static/images/coldcard-logo-nav.png)
+ColdController explores reuse of the COLDCARD's keypad, OLED, USB interface, microcontroller, microSD slot, and related hardware for music and Bitcoin Audio control.
 
-![coldcard picture front](https://coldcard.com/static/images/coldcard-front.png)
-![coldcard picture back](https://coldcard.com/static/images/coldcard-back.png)
+The first target is a retired **COLDCARD Mk3**. The first end-to-end milestone is intentionally small:
 
-## Reproducible Builds
-
-To have confidence this source code tree is the same as the binary on your device,
-you can rebuild it from source and get **exactly the same bytes**. This process
-has been automated using Docker. Steps are as follows:
-
-1. Install Docker and start it.
-2. Install [make (GNUMake)](https://www.gnu.org/software/make/) if you don't already have it.
-3. Checkout the code, and start the process.
-
-    git clone https://github.com/Coldcard/firmware.git
-    
-    cd firmware/stm32
-    
-    make repro
-
-4. At the end of the process a clear confirmation message is shown, or the differences.
-5. Build products can be found `firmware/stm32/built`.
-
-## Check-out and Setup
-
-Do a checkout, recursively to get all the submodules:
-
-    git clone --recursive https://github.com/Coldcard/firmware.git
-
-Already checked-out and getting git errors? Do this:
-
-    git fetch
-    git reset --hard origin/master
-
-Then:
-
-- `cd firmware`
-- `git submodule update --init` _(if needed?)_
-- `brew install automake autogen virtualenv`
-- `virtualenv -p python3 ENV` (Python > 3.5 is required)
-- `source ENV/bin/activate` (or `source ENV/bin/activate.csh` based on shell preference)
-- `pip install -r requirements.txt`
-
-Setup and Run the Desktop-based Coldcard simulator:
-
-- `cd unix; make setup && make && ./simulator.py`
-
-Building the firmware:
-
-- `cd ../cli; pip install --editable .`
-- `cd ../stm32; make setup && make; make firmware-signed.dfu`
-- The resulting file, `firmware-signed.dfu` can be loaded directly onto a Coldcard, using this
-  command (already installed based on above)
-- `ckcc upgrade firmware-signed.dfu`
-
-Which looks like this:
-
-    [ENV] [firmware/stm32 42] ckcc upgrade firmware-signed.dfu
-    675328 bytes (start @ 293) to send from 'firmware-signed.dfu'
-    Uploading  [##########--------------------------]   29%  0d 00:01:04
-
-
-### MacOS
-
-You'll probably need to install at least these packages:
-
-    brew install --cask xquartz
-    brew install sdl2 xterm
-    brew install --cask gcc-arm-embedded
-
-Used to be these were needed as well:
-
-    brew tap PX4/px4
-    brew search px4
-    brew install px4/px4/gcc-arm-none-eabi-80 (latest gcc-arm-none-eabi-XX, currently 80)
-
-You may need to reboot to avoid a `DISPLAY is not set` error.
-
-### Linux
-
-You'll probably need to install these (Ubuntu 16):
-
-    apt install libudev-dev python-sdl2 gcc-arm-none-eabi
-
-If you get stuck on the "Skip PIN" screen after the startup, edit the `pyb.py` file located under `/unix/frozen-modules/` and follow the instructions from line 27 to line 31:
-```
-# If on linux, try commenting the following line
-addr = bytes([len(fn)+2, socket.AF_UNIX] + list(fn))
-# If on linux, try uncommenting the following two lines
-#import struct
-#addr = struct.pack('H108s', socket.AF_UNIX, fn)
+```text
+Mk3 keypad
+    -> BA/1 USB HID
+    -> ColdController host bridge
+    -> virtual MIDI
+    -> Ableton / Bitcoin Audio
 ```
 
-## Code Organization
+Possible later work includes OLED feedback, control banks, transport and loop controls, OSC/API adapters, NakamoTones and Band Builder integration, and evaluation of native USB MIDI.
 
-Top-level dirs:
+## Status
 
-`shared`
+**Experimental / R&D. Not production. Not a wallet.**
 
-- shared code between desktop test version and real-deal
-- expected to be largely in python, and higher-level
+Mk3 ColdController development is based on the upstream **`v4-legacy`** firmware line. The fork's `master` branch is retained primarily as an upstream/default reference and is **not the implementation base for Mk3 ColdController firmware**.
 
-`unix`
+Current physical definition of done:
 
-- unix (MacOS) version for testing/rapid dev
-- this is a simulator for the product
+```text
+press Mk3 key 1
+    -> BA/1 HID key-down/key-up reports
+    -> coldcontroller/bridge.py
+    -> virtual MIDI port "ColdController"
+    -> MIDI note 36 visible in Ableton
+```
 
-`testing`
+Until that path is proven on physical hardware, firmware changes should be treated as proof-of-concept work.
 
-- test cases and associated data
+## Agent and contributor contract
 
+If you are an automated coding agent or contributor working in this repository, these are project constraints:
 
-`stm32`
+1. **Do not treat this fork as a production hardware wallet.** Its purpose is hardware repurposing for Bitcoin Audio.
+2. **Do not restore wallet behavior as a "fix" to ColdController mode.** Bypassing wallet terms, PIN, seed, and transaction UX in developer-signed ColdController builds is intentional.
+3. **Never use real secrets for testing.** Do not add, request, or load valuable seeds, PINs, private keys, PSBTs, or funds.
+4. **For Mk3 work, branch from `v4-legacy`.** Do not blindly reset or merge the ColdController implementation to upstream `master`.
+5. **Preserve the existing bootloader/security boundary.** ColdController uses the upstream developer-signing mechanism; no bootloader bypass, glitching, or secure-boot defeat is part of this project.
+6. **Reuse existing Mk3 hardware paths first.** The current proof intentionally reuses the 64-byte USB HID interface and existing debounced membrane-keypad path.
+7. **Keep musical timing host-side.** ColdController is a control surface, not the authoritative MIDI clock or distributed jam clock.
+8. **Native USB MIDI is not M1.** Prove HID -> host bridge -> MIDI first.
+9. **Keep Bitcoin Audio additions clearly scoped.** Prefer `coldcontroller/` and small, obvious firmware hooks over broad rewrites of inherited wallet code.
+10. **Do not make production-security claims about this fork.** Documentation, issues, PRs, and code comments should consistently describe it as experimental repurposing work.
+11. **Respect upstream licensing.** Inherited Coldcard source remains subject to `COPYING-CC`. Any commercial firmware product based substantially on it requires a separate licensing or clean-room decision.
 
-- embedded micro version, for actual product
-- final target is a binary file for loading onto hardware
+A useful rule for agents: **if a proposed change makes the device behave more like a production wallet instead of more like a Bitcoin Audio controller, it is probably outside this fork's intended scope.**
 
-`external`
+## Branch model
 
-- code from other projects, ie. the dreaded submodules
+- `master` — upstream/default reference line; not the Mk3 ColdController implementation base.
+- `v4-legacy` — upstream legacy Mk2/Mk3 firmware base.
+- ColdController feature branches — Mk3 work should normally branch from `v4-legacy`.
 
-`stm32/bootloader`
+The active proof-of-concept branch is currently `agent/mk3-hid-poc`.
 
-- 32k of factory-set code that you cannot change
-- however, you can inspect what code is on your coldcard and compare to this.
+## ColdController-specific code
 
-`hardware`
+On ColdController development branches, project-specific files live primarily under:
 
-- schematic and bill of materials for the Coldcard
+```text
+coldcontroller/
+    README.md
+    protocol.md
+    bridge.py
+    requirements.txt
+    profiles/
 
-`unix/work/MicroSD`
+shared/coldcontroller.py
+```
 
-- files on "simulated" microSD card 
+`coldcontroller/` contains the BA/1 protocol, host bridge, profiles, and project documentation. Small hooks under `shared/` connect the inherited Mk3 keypad, USB, display, and boot flow to controller mode.
 
+## Safety boundary
 
-## Support
+ColdController test units should be labeled and treated as **retired wallets**.
 
-Found a bug? Email: support@coinkite.com
+Never:
+
+- load a valuable seed phrase onto a ColdController test device;
+- use it to custody Bitcoin;
+- assume experimental firmware retains production wallet security properties;
+- present a ColdController build as an official Coinkite/COLDCARD product;
+- use production-wallet behavior as an acceptance criterion for this fork.
+
+Acceptance criteria for this project are controller behaviors: boot, display, keypad input, USB transport, MIDI/OSC/API translation, feedback, and Bitcoin Audio integration.
+
+## Upstream origin
+
+This repository is a fork of `Coldcard/firmware` so we can retain the Mk3 hardware support, bootloader compatibility, simulator/build tooling, and developer-signing path needed to experiment on real hardware.
+
+Coldcard and the inherited firmware are products/source of Coinkite Inc. ColdController is an independent Bitcoin Audio hardware-repurposing experiment and is not an official Coinkite product.
+
+For original production-wallet documentation, current security guidance, and current COLDCARD firmware, refer to the upstream `Coldcard/firmware` repository and Coinkite documentation. Upstream copyright and license notices remain authoritative for inherited files.
+
+## Mk3 development starting point
+
+```bash
+git clone --recursive https://github.com/bitcoinaudio/coldcontroller.git
+cd coldcontroller
+git checkout agent/mk3-hid-poc
+git submodule update --init --recursive
+
+cd stm32
+make setup
+make
+make firmware-signed.dfu
+```
+
+The resulting developer-signed image is **experimental firmware**. Read `coldcontroller/README.md` before flashing hardware.

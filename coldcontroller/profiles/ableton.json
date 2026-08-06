@@ -1,0 +1,19 @@
+{
+  "midi_port": "ColdController",
+  "channel": 0,
+  "velocity": 127,
+  "keys": {
+    "1": {"type": "note", "note": 36},
+    "2": {"type": "note", "note": 38},
+    "3": {"type": "note", "note": 42},
+    "4": {"type": "note", "note": 46},
+    "5": {"type": "note", "note": 48},
+    "6": {"type": "note", "note": 50},
+    "7": {"type": "cc", "control": 20, "value": 127},
+    "8": {"type": "cc", "control": 21, "value": 127},
+    "9": {"type": "cc", "control": 22, "value": 127},
+    "0": {"type": "cc", "control": 23, "value": 127},
+    "x": {"type": "cc", "control": 120, "value": 0},
+    "y": {"type": "cc", "control": 24, "value": 127}
+  }
+}

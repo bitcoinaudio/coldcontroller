@@ -11,8 +11,28 @@ PYTHON_DO_DFU = $(MPY_TOP)/tools/pydfu.py
 # aka ../cli/signit.py
 SIGNIT = signit
 
-MAKE_ARGS = BOARD=COLDCARD -j 4 EXCLUDE_NGU_TESTS=1
+CC_ARM = arm-none-eabi-gcc
+
+# GCC 12 added -Wdangling-pointer and GCC 13 added -Wenum-int-mismatch. Both fire
+# on vendored micropython code that is correct as written, and the stm32 port
+# builds with -Werror. Demote only those two rather than dropping -Werror
+# wholesale, so real problems in our own code still fail the build. Each is
+# probed first: the repro image (alpine 3.16) ships an older GCC that would
+# reject the option name outright. These are diagnostic-only flags and do not
+# affect code generation, so reproducible builds are unaffected.
+FW_WARN_FLAGS := $(foreach w,dangling-pointer enum-int-mismatch,\
+	$(shell $(CC_ARM) -W$(w) -Werror -x c -c /dev/null -o /dev/null 2>/dev/null \
+		&& echo -Wno-error=$(w)))
+
+MAKE_ARGS = BOARD=COLDCARD -j 4 EXCLUDE_NGU_TESTS=1 CFLAGS_EXTRA="$(FW_WARN_FLAGS)"
 BUILD_DIR = l-port/build-COLDCARD
+
+# mpy-cross is vendored 2019-era C built with the *host* compiler, and it uses
+# -Werror. GCC 12 added -Wdangling-pointer and GCC 13 added -Wenum-int-mismatch,
+# both of which fire on upstream code that is fine. Plain -Wno-error is used
+# rather than naming those warnings, because `make setup` also runs inside the
+# repro Docker image (alpine 3.16 / GCC 11.2), which would not recognise them.
+MPY_CROSS_CFLAGS_EXTRA = -Wno-error
 
 all: COLDCARD/file_time.c
 	cd $(PORT_TOP) && $(MAKE) $(MAKE_ARGS)
@@ -248,14 +268,20 @@ size:
 	wc -c tmp.mpy
 
 # one time setup, after repo checkout
+# - safe to re-run: every step is idempotent
 setup:
 	cd $(MPY_TOP) ; git submodule update --init lib/stm32lib
-	cd $(MPY_TOP)/lib/stm32lib ; sed -i.orig -e 's/#define VECT_TAB_OFFSET  0x00/    /' \
-				CMSIS/STM32L4xx/Source/Templates/system_stm32l4xx.c
-	cd ../external/libngu; make min-one-time
-	cd $(MPY_TOP)/mpy-cross ; make
-	-ln -s $(PORT_TOP) l-port
-	-ln -s $(MPY_TOP) l-mpy
+	cd $(MPY_TOP)/lib/stm32lib ; \
+		src=CMSIS/STM32L4xx/Source/Templates/system_stm32l4xx.c ; \
+		if grep -q '^#define VECT_TAB_OFFSET' $$src ; then \
+			sed -i.orig -e 's/#define VECT_TAB_OFFSET  0x00/    /' $$src ; \
+		else \
+			echo "stm32lib: VECT_TAB_OFFSET already patched, leaving .orig alone" ; \
+		fi
+	cd ../external/libngu; $(MAKE) min-one-time
+	cd $(MPY_TOP)/mpy-cross ; $(MAKE) CFLAGS_EXTRA="$(MPY_CROSS_CFLAGS_EXTRA)"
+	ln -sfn $(PORT_TOP) l-port
+	ln -sfn $(MPY_TOP) l-mpy
 	cd $(PORT_TOP)/boards; if [ ! -L COLDCARD ]; then \
 		ln -s ../../../../../stm32/COLDCARD COLDCARD; fi
 	
